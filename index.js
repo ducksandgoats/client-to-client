@@ -10,15 +10,15 @@ export default class Client extends Events {
         this.browserOrNot = typeof(window) !== 'undefined'
         this.db = new Level(this.browserOrNot ? 'db' : './db')
         if(!this.id){
-            this.id = Array.from(crypto.getRandomValues(new Uint8Array(20)), (byte) => {return ('0' + byte.toString(16)).slice(-2)}).join('')
+            this.id = crypto.randomBytes(20).toString('hex')
             localStorage.setItem('id', this.id)
         }
         // this.charset = '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'
         this.simple = opts.simple && typeof(opts.simple) === 'object' && !Array.isArray(opts.simple) ? opts.simple : {}
         this.hash = hash
         this.url = url
-        this.num = !opts.num || opts.num < 2 || opts.num > 6 ? 3 : Math.floor(opts.num / 2)
-        this.initOnly = Boolean(opts.initOnly)
+        // this.num = !opts.num || opts.num < 2 || opts.num > 6 ? 3 : Math.floor(opts.num / 2)
+        // this.initOnly = Boolean(opts.initOnly)
         // this.wsOffers = new Map()
         // this.rtcOffers = new Map()
         this.channels = new Map()
@@ -360,11 +360,16 @@ export default class Client extends Events {
     onSend(data, id = null){
         if(id){
             if(this.channels.has(id)){
-                this.channels.get(id).send(data)
+                const test = this.channels.get(id)
+                if(test.connected){
+                    test.send(data)
+                }
             }
         } else {
             this.channels.forEach((prop) => {
-                prop.send(data)
+                if(prop.connected){
+                    prop.send(data)
+                }
             })
         }
     }
