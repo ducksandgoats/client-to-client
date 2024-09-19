@@ -3,7 +3,7 @@ import Events from 'events'
 import {Level} from 'level'
 
 export default class Client extends Events {
-    constructor(url, hash, opts = {auto: true}){
+    constructor(url, hash, opts = {}){
         super()
         this.dev = Boolean(opts.dev)
         this.id = localStorage.getItem('id')
