@@ -10,7 +10,7 @@ export default class Client extends Events {
         this.browserOrNot = typeof(window) !== 'undefined'
         this.db = new Level(this.browserOrNot ? 'db' : './db')
         if(!this.id){
-            this.id = crypto.randomBytes(20).toString('hex')
+            this.id = crypto.randomUUID()
             localStorage.setItem('id', this.id)
         }
         this.simple = opts.simple && typeof(opts.simple) === 'object' && !Array.isArray(opts.simple) ? opts.simple : {}
@@ -524,7 +524,7 @@ export default class Client extends Events {
         }
     }
     rtc(){
-        const test = {id: crypto.randomBytes(20).toString('hex'), tried: [], start: this.id}
+        const test = {id: crypto.randomUUID(), tried: [], start: this.id}
         this.temp.set(test.id, test)
 
         const arr = []
