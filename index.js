@@ -3,7 +3,7 @@ import Events from 'events'
 import {Level} from 'level'
 
 export default class Client extends Events {
-    constructor(url, hash, opts){
+    constructor(url, hash, opts = {auto: true}){
         super()
         this.dev = Boolean(opts.dev)
         this.id = localStorage.getItem('id')
@@ -13,66 +13,38 @@ export default class Client extends Events {
             this.id = crypto.randomBytes(20).toString('hex')
             localStorage.setItem('id', this.id)
         }
-        // this.charset = '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'
         this.simple = opts.simple && typeof(opts.simple) === 'object' && !Array.isArray(opts.simple) ? opts.simple : {}
         this.hash = hash
         this.url = url
-        // this.num = !opts.num || opts.num < 2 || opts.num > 6 ? 3 : Math.floor(opts.num / 2)
-        // this.initOnly = Boolean(opts.initOnly)
-        // this.wsOffers = new Map()
-        // this.rtcOffers = new Map()
         this.channels = new Map()
         this.tracks = new Set()
         this.socket = null
         this.relay = false
+        this.temp = new Map()
+        this.status = true
+        if(opts.auto){
+            this.ws()
+        }
+    }
+    begin(){
+        this.status = true
         this.ws()
     }
-    quit(){
-        // this.wsOffers.forEach((data) => {
-        //     data.destroy()
-        // })
-        // this.rtcOffers.forEach((data) => {
-        //     data.destroy()
-        // })
-        this.channels.forEach((data) => {
-            data.destroy()
-        })
-        // if(this.timerWS){
-        //     clearInterval(this.timerWS)
-        // }
+    end(){
+        this.status = false
         if(this.socket){
             this.socket.close()
         }
-        Object.keys(this).forEach((data) => {
-            if(this[data] !== 'quit'){
-                this[data] = null
+        this.temp.forEach((data) => {
+            if(this.channels.has(data.relay)){
+                this.channels.get(data.relay).send(JSON.stringify({id: data.id, action: 'abort'}))
             }
         })
-    }
-    initWS(){
-        if(this.channels.size < this.max){
-            const check = this.max - this.channels.size
-            if(this.wsOffers.size < check){
-                const test = check - this.wsOffers.size
-                for(let i = 0;i < test;i++){
-                    const testID = crypto.randomBytes(20).toString('hex')
-                    const testChannel = new Channel({...this.simple, initiator: true, trickle: false})
-                    testChannel.offer_id = testID
-                    testChannel.offer = new Promise((res) => {testChannel.once('signal', res)})
-                    testChannel.channels = new Set()
-                    this.wsOffers.set(testID, testChannel)
-                }
-            }
-        } else {
-            this.wsOffers.forEach((data) => {
-                data.destroy((err) => {
-                    if(err){
-                        this.emit('error', err)
-                    }
-                })
-            })
-            this.wsOffers.clear()
-        }
+        this.temp.clear()
+        this.channels.forEach((data) => {
+            data.destroy()
+        })
+        this.channels.clear()
     }
     ws(){
         if(this.socket){
@@ -118,7 +90,7 @@ export default class Client extends Events {
                 new Promise((res) => {testChannel.once('signal', res)})
                 .then((data) => {
                     testChannel.id = message.res
-                    testChannel.ws = true
+                    testChannel.redo = true
                     testChannel.channels = new Set()
                     testChannel.messages = new Set()
                     if(!this.channels.has(testChannel.id)){
@@ -137,7 +109,7 @@ export default class Client extends Events {
                 new Promise((res) => {testChannel.once('signal', res)})
                 .then((data) => {
                     testChannel.id = message.req
-                    testChannel.ws = true
+                    testChannel.redo = true
                     testChannel.channels = new Set()
                     testChannel.messages = new Set()
                     if(!this.channels.has(testChannel.id)){
@@ -184,49 +156,6 @@ export default class Client extends Events {
             this.socket.removeEventListener('close', handleClose)
         }
     }
-    rtc(){
-        if(this.channels.size >= 6){
-            return
-        }
-        const testChannel = new Channel({...this.simple, initiator: true, trickle: false})
-        new Promise((res) => {testChannel.once('signal', res)})
-        .then((data) => {
-            testChannel.id = crypto.randomBytes(20).toString('hex')
-            testChannel.doNotReplace = true
-            testChannel.ws = false
-            testChannel.msg = {id: testChannel.id, tried: [], req: this.id}
-            testChannel.channels = new Set()
-            testChannel.messages = new Set()
-            testChannel.takeOut = setTimeout(() => {testChannel.destroy()}, 120000)
-            if(!this.channels.has(testChannel.id)){
-                this.channels.set(testChannel.id, testChannel)
-            }
-            
-            const base = testChannel.msg
-
-            const arr = []
-            for(const prop of this.channels.values()){
-                arr.push(prop)
-            }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id)})
-            // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
-            const i = notTried[Math.floor(Math.random() * notTried.length)]
-            if(i){
-                const obj = {id: base.id, req: base.req, action: 'request', request: data}
-                base.tried.push(i.id)
-                base.relay = i.id
-                i.send('trystereo:' + JSON.stringify(obj))
-            } else {
-                testChannel.destroy()
-                return
-            }
-            this.handleChannel(testChannel)
-        })
-        .catch((err) => {
-            testChannel.destroy()
-            console.error(err)
-        })
-    }
     handleChannel(channel){
         const onConnect = () => {
             if(this.dev){
@@ -236,7 +165,7 @@ export default class Client extends Events {
             delete channel.takeOut
 
             if(this.channels.has(channel.msg.relay)){
-                this.channels.get(channel.msg.relay).send({action: 'session', id: channel.msg.id})
+                this.channels.get(channel.msg.relay).send({action: 'afterSession', id: channel.msg.id})
             }
             delete channel.msg
             // this.dispatchEvent(new CustomEvent('connect', {detail: channel}))
@@ -251,8 +180,8 @@ export default class Client extends Events {
             // }
             this.channels.forEach((data) => {
                 if(data.id !== channel.id){
-                    data.send('trystereo:add:' + channel.id)
-                    channel.send('trystereo:add:' + data.id)
+                    data.send(`trystereo:${JSON.stringify({action: 'add', add: channel.id})}`)
+                    channel.send(`trystereo:${JSON.stringify({action: 'add', add: data.id})}`)
                 }
             })
             this.emit('connect', channel)
@@ -266,19 +195,21 @@ export default class Client extends Events {
             if(data.startsWith('trystereo:')){
                 data = JSON.parse(data.replace('trystereo:', ''))
                 if(data.action === 'add'){
-                    if(!this.channels.has(data.add)){
-                        this.channels.add(data.add)
+                    if(!channel.channels.has(data.add)){
+                        channel.channels.add(data.add)
                     }
                 } else if(data.action === 'sub'){
-                    if(!this.channels.has(data.sub)){
-                        this.channels.add(data.sub)
+                    if(!channel.channels.has(data.sub)){
+                        channel.channels.add(data.sub)
                     }
-                } else if(data.action === 'request'){
-                    this.relay(data, channel)
-                } else if(data.action === 'response'){
-                    this.organize(data, channel)
-                } else if(data.action === 'session'){
-                    this.session(data, channel)
+                } else if(data.action === 'beforeSearch'){
+                    this.beforeSearch(data, channel)
+                } else if(data.action === 'afterSearch'){
+                    this.afterSearch(data, channel)
+                } else if(data.action === 'beforeSession'){
+                    this.beforeSession(data, channel)
+                } else if(data.action === 'afterSession'){
+                    this.afterSession(data, channel)
                 } else if(data.action === 'nonmsg'){
                     this.nonmsg(data)
                 } else if(data.action === 'abort'){
@@ -312,14 +243,14 @@ export default class Client extends Events {
 
             channel.messages.forEach(async (data) => {
                 const test = await this.db.get(data)
-                if(test.reqrelay){
-                    if(this.channels.has(test.reqrelay)){
-                        this.channels.get(test.reqrelay).send(JSON.stringify({action: 'abort', id: test.id}))
+                if(test.startRelay){
+                    if(this.channels.has(test.startRelay)){
+                        this.channels.get(test.startRelay).send(JSON.stringify({action: 'abort', id: test.id}))
                     }
                 }
-                if(test.resrelay){
-                    if(this.channels.has(test.resrelay)){
-                        this.channels.get(test.resrelay).send(JSON.stringify({action: 'abort', id: test.id}))
+                if(test.stopRelay){
+                    if(this.channels.has(test.stopRelay)){
+                        this.channels.get(test.stopRelay).send(JSON.stringify({action: 'abort', id: test.id}))
                     }
                 }
                 channel.messages.delete(data)
@@ -328,18 +259,18 @@ export default class Client extends Events {
 
             this.channels.forEach((chan) => {
                 if(chan.id !== channel.id){
-                    chan.send('trystereo:sub:' + channel.id)
+                    chan.send(`trystereo:${JSON.stringify({action: 'sub', sub: channel.id})}`)
                 }
             })
             if(this.channels.has(channel.id)){
                 this.channels.delete(channel.id)
             }
-            if(this.channels.size){
-                if(channel.ws){
+            if(this.status){
+                if(this.channels.size && this.channels.size < 3){
                     this.rtc()
+                } else if(this.channels.size){
+                    this.ws()
                 }
-            } else {
-                this.ws()
             }
             this.emit('disconnect', channel)
             // channel.emit('disconnected', channel)
@@ -402,41 +333,44 @@ export default class Client extends Events {
     async abortion(obj, chan){
         const test = await this.db.get(obj.id)
         if(test){
-            if(chan.id === test.reqrelay && test.resrelay && this.channels.has(test.resrelay)){
-                this.channels.get(test.resrelay).send(JSON.stringify(obj))
+            if(chan.id === test.startRelay && test.stopRelay && this.channels.has(test.stopRelay)){
+                this.channels.get(test.stopRelay).send(JSON.stringify(obj))
             }
-            if(chan.id === test.resrelay && test.reqrelay && this.channels.has(test.reqrelay)){
-                this.channels.get(test.reqrelay).send(JSON.stringify(obj))
+            if(chan.id === test.stopRelay && test.startRelay && this.channels.has(test.startRelay)){
+                this.channels.get(test.startRelay).send(JSON.stringify(obj))
             }
             await this.db.del(test.id)
         }
     }
-    async relay(obj, chan){
-        if(!this.channels.has(obj.req) && this.channels.size < 6){
-            const testChannel = new Channel({...this.simple, initiator: false, trickle: false})
+    async beforeSearch(obj, chan){
+        if((this.channels.size + this.temp.size) < 6 && !this.channels.has(obj.start)){
+            const testChannel = new Channel({...this.simple, initiator: true, trickle: false})
             new Promise((res) => {testChannel.once('signal', res)})
-            .then(async (data) => {
-                testChannel.id = obj.req
-                testChannel.doNotReplace = true
+            .then((data) => {
+                testChannel.id = obj.start
+                testChannel.redo = true
                 testChannel.ws = false
-                testChannel.msg = {id: obj.id, relay: chan.id}
+                testChannel.msg = {id: obj.id, relay: chan.id, start: obj.start}
                 testChannel.channels = new Set()
                 testChannel.messages = new Set()
-                if(!this.channels.has(testChannel.id)){
-                    this.channels.set(testChannel.id, testChannel)
-                }
-                delete obj.request
-                this.socket.send(JSON.stringify({...obj, action: 'response', response: data, res: this.id}))
-                testChannel.takeOut = setTimeout(() => {testChannel.destroy()}, 60000)
+                // if(!this.channels.has(testChannel.id)){
+                this.channels.set(testChannel.id, testChannel)
+                // }
+                // delete obj.start
+                chan.send(JSON.stringify({...obj, action: 'afterSearch', data, stop: this.id}))
+                testChannel.takeOut = setTimeout(() => {
+                    testChannel.redo = false
+                    testChannel.destroy()
+                }, 60000)
                 this.handleChannel(testChannel)
             })
             .catch((err) => {
                 testChannel.destroy()
+                chan.send(JSON.stringify({...obj, action: 'abort'}))
                 console.error(err)
             })
-            testChannel.signal(obj.request)
         } else {
-            const test = await db.get(obj.id)
+            const test = await this.db.get(obj.id)
             if(test){
                 obj.action = 'nonmsg'
                 chan.send('trystereo:' + JSON.stringify(obj))
@@ -446,37 +380,35 @@ export default class Client extends Events {
                     chan.messages.add(obj.id)
                 }
             }
-            const base = {reqrelay: chan.id, tried: [], id: obj.id, req: obj.req}
-            await db.put(base.id, base)
+            const base = {startRelay: chan.id, tried: [], id: obj.id, start: obj.start}
+            await this.db.put(base.id, base)
 
             const arr = []
             for(const prop of this.channels.values()){
                 arr.push(prop)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.reqrelay})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay})
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
-                obj.action = 'request'
+                obj.action = 'beforeSearch'
                 base.tried.push(i.id)
-                await db.put(base.id, base)
+                base.stopRelay = i.id
+                await this.db.put(base.id, base)
                 i.send('trystereo:' + JSON.stringify(obj))
             } else {
-                if(this.channels.has(base.reqrelay)){
-                    const sendToChannel = this.channels.get(base.reqrelay)
-                    obj.action = 'nonmsg'
-                    sendToChannel.send('trystereo:' + JSON.stringify(obj))
-                    if(sendToChannel.messages.has(base.id)){
-                        sendToChannel.messages.delete(base.id)
-                    }
+                obj.action = 'nonmsg'
+                base.startRelay.send('trystereo:' + JSON.stringify(obj))
+                if(base.startRelay.messages.has(base.id)){
+                    base.startRelay.messages.delete(base.id)
                 }
-                await db.del(base.id)
+                await this.db.del(base.id)
             }
         }
     }
     async nonmsg(obj){
-        if(this.channels.has(obj.id)){
-            const chan = this.channels.get(obj.id)
+        if(this.temp.has(obj.id)){
+            const chan = this.temp.get(obj.id)
             const base = chan.msg
             const arr = []
             for(const prop of this.channels.values()){
@@ -486,7 +418,7 @@ export default class Client extends Events {
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
-                obj.action = 'request'
+                obj.action = 'beforeSearch'
                 base.tried.push(i.id)
                 base.relay = i.id
                 i.send('trystereo:' + JSON.stringify(obj))
@@ -495,11 +427,11 @@ export default class Client extends Events {
                 return
             }
         } else {
-            const base = await db.get(obj.id)
+            const base = await this.db.get(obj.id)
             if(!base){
                 return
             } else {
-                if(!this.channels.has(base.reqrelay)){
+                if(!this.channels.has(base.startRelay)){
                     await this.db.del(base.id)
                     return
                 }
@@ -509,48 +441,125 @@ export default class Client extends Events {
             for(const prop of this.channels.values()){
                 arr.push(prop)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.reqrelay})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay})
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
-                obj.action = 'request'
+                obj.action = 'beforeSearch'
                 base.tried.push(i.id)
-                await db.put(base.id, base)
+                base.stopRelay = i.id
+                await this.db.put(base.id, base)
                 i.send('trystereo:' + JSON.stringify(obj))
             } else {
-                if(this.channels.has(base.reqrelay)){
-                    const sendToChannel = this.channels.get(base.reqrelay)
+                if(this.channels.has(base.startRelay)){
+                    const sendToChannel = this.channels.get(base.startRelay)
                     obj.action = 'nonmsg'
                     sendToChannel.send('trystereo:' + JSON.stringify(obj))
                     if(sendToChannel.messages.has(base.id)){
                         sendToChannel.messages.delete(base.id)
                     }
                 }
-                await db.del(base.id)
+                await this.db.del(base.id)
             }
         }
     }
-    async organize(obj, chan){
-        if(this.channels.has(obj.id)){
-            const testChannel = this.channels.get(obj.id)
-            if(this.channels.size > 6){
-                this.channels.delete(testChannel.id)
+    async afterSearch(obj, chan){
+        if(this.id === obj.start && this.temp.has(obj.id)){
+            const tempChannel = this.temp.get(obj.id)
+            if(tempChannel.relay !== chan.id){
+                this.temp.delete(tempChannel.id)
                 chan.send(JSON.stringify({...obj, action: 'abort'}))
-            } else {
-                this.channels.delete(testChannel.id)
-                testChannel.id = obj.res
-                this.channels.set(testChannel.id, testChannel)
-                testChannel.signal(obj.response)
-                delete obj.response
-                chan.send(JSON.stringify({...obj, action: 'session'}))
+                return
             }
+            const testChannel = new Channel({...this.simple, initiator: false, trickle: false})
+            new Promise((res) => {testChannel.once('signal', res)})
+            .then(async (data) => {
+                testChannel.id = obj.stop
+                testChannel.msg = tempChannel
+                testChannel.msg.stop = obj.stop
+                this.temp.delete(tempChannel.id)
+                testChannel.redo = true
+                testChannel.ws = false
+                testChannel.channels = new Set()
+                testChannel.messages = new Set()
+                if(!this.channels.has(testChannel.id)){
+                    this.channels.set(testChannel.id, testChannel)
+                }
+                delete obj.data
+                chan.send(JSON.stringify({...obj, action: 'beforeSession', data}))
+                testChannel.takeOut = setTimeout(() => {
+                    tempChannel.redo = false
+                    testChannel.destroy()
+                }, 60000)
+                this.handleChannel(testChannel)
+            })
+            .catch((err) => {
+                this.emit('error', err)
+                testChannel.destroy()
+                this.temp.delete(tempChannel.id)
+                chan.send(JSON.stringify({...obj, action: 'abort'}))
+                console.error(err)
+            })
+            testChannel.signal(obj.data)
         } else {
-            const test = await db.get(obj.id)
+            const test = await this.db.get(obj.id)
             if(test){
-                if(this.channels.has(test.reqrelay)){
-                    test.resrelay = chan.id
-                    test.res = obj.res
-                    this.channels.get(test.reqrelay).send(JSON.stringify(obj))
+                // test.stopRelay === chan.id && test.start === obj.start && this.channels.has(test.startRelay)
+                if(test.stopRelay === chan.id && this.channels.has(test.startRelay)){
+                    test.stop = obj.stop
+                    this.channels.get(test.startRelay).send(JSON.stringify(obj))
+                    if(!chan.messages.has(obj.id)){
+                        chan.messages.add(obj.id)
+                    }
+                    await this.db.put(test.id, test)
+                } else {
+                    obj.action = 'abort'
+                    chan.send('trystereo:' + JSON.stringify(obj))
+                    await this.db.del(test.id)
+                }
+            } else {
+                obj.action = 'abort'
+                chan.send('trystereo:' + JSON.stringify(obj))
+            }
+        }
+    }
+    rtc(){
+        const test = {id: crypto.randomBytes(20).toString('hex'), tried: [], start: this.id}
+        this.temp.set(test.id, test)
+
+        const arr = []
+        for(const prop of this.channels.values()){
+            arr.push(prop)
+        }
+        const notTried = arr.filter((data) => {return !test.tried.includes(data.id)})
+        // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
+        const i = notTried[Math.floor(Math.random() * notTried.length)]
+        if(i){
+            const obj = {id: test.id, start: test.start, action: 'beforeSearch'}
+            test.tried.push(i.id)
+            test.relay = i.id
+            i.send('trystereo:' + JSON.stringify(obj))
+        } else {
+            this.temp.delete(test.id)
+            return
+        }
+    }
+    async beforeSession(obj, chan){
+        if(this.channels.has(obj.start)){
+            const testChannel = this.channels.get(obj.start)
+            if(testChannel.msg.relay !== chan.id){
+                testChannel.destroy()
+                chan.send(JSON.stringify({...obj, action: 'abort'}))
+                return
+            }
+            testChannel.signal(obj.data)
+            delete obj.data
+        } else {
+            const test = await this.db.get(obj.id)
+            if(test){
+                // chan.id === test.startRelay && test.start === obj.start && test.stop === obj.stop && this.channels.has(test.stopRelay)
+                if(chan.id === test.startRelay && this.channels.has(test.stopRelay)){
+                    this.channels.get(test.stopRelay).send(JSON.stringify(obj))
                     if(chan.messages.has(obj.id)){
                         chan.messages.add(obj.id)
                     }
@@ -566,41 +575,33 @@ export default class Client extends Events {
             }
         }
     }
-    async session(obj, chan){
-        const base = await db.get(obj.id)
+    async afterSession(obj, chan){
+        const base = await this.db.get(obj.id)
         if(base){
-            if(base.reqrelay === chan.id){
-                if(this.channels.has(base.resrelay)){
-                    this.channels.get(base.resrelay).send(JSON.stringify(obj))
+            if(base.startRelay === chan.id){
+                if(this.channels.has(base.stopRelay)){
+                    this.channels.get(base.stopRelay).send(JSON.stringify(obj))
                 }
             }
-            if(base.resrelay === chan.id){
-                if(this.channels.has(base.reqrelay)){
-                    this.channels.get(base.reqrelay).send(JSON.stringify(obj))
+            if(base.stopRelay === chan.id){
+                if(this.channels.has(base.startRelay)){
+                    this.channels.get(base.startRelay).send(JSON.stringify(obj))
                 }
             }
             await this.db.del(obj.id)
         } else {
-            if(obj.req === this.id){
-                if(this.channels.has(obj.res)){
-                    delete this.channels.get(obj.res).msg
+            if(obj.start === this.id){
+                if(this.channels.has(obj.stop)){
+                    const test = this.channels.get(obj.stop)
+                    delete test.msg
                 }
             }
-            if(obj.res === this.id){
-                if(this.channels.has(obj.req)){
-                    delete this.channels.get(obj.req).msg
+            if(obj.stop === this.id){
+                if(this.channels.has(obj.start)){
+                    const test = this.channels.get(obj.start)
+                    delete test.msg
                 }
             }
         }
-    }
-    checkClosing(amount){
-        setTimeout(() => {
-            if(this.socket.readyState === WebSocket.CLOSED){
-                delete this.socket
-                this.soc(amount)
-            } else {
-                setTimeout(() => {this.checkClosing(amount)}, 1500)
-            }
-        }, 1500)
     }
 }
