@@ -56,7 +56,7 @@ export default class Client extends Events {
         // }
         this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}&want=${6 - this.channels.size}`)
         this.socket.handleOpen = (e) => {
-            this.emit('ev', 'socket opened' + e)
+            this.emit('open', e)
         }
         this.socket.handleMessage = (e) => {
             let message
@@ -141,8 +141,8 @@ export default class Client extends Events {
         this.socket.handleError = (e) => {
             this.emit('error', e)
         }
-        this.socket.handleClose = (code, reason) => {
-            this.emit('ev', `socket closed - code: ${code} reason: ${reason}`)
+        this.socket.handleClose = (e) => {
+            this.emit('close', e)
             this.socket.handleEvent()
             if(this.socket.relay){
                 setTimeout(() => {this.ws()}, 5000)
