@@ -69,6 +69,9 @@ export default class Client extends Events {
                 this.emit('error', error)
                 return
             }
+            if(message.action === 'error'){
+                this.emit('error', message.error)
+            }
             if(message.action === 'relay'){
                 if(message.relay){
                     this.url = message.relay
