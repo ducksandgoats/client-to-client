@@ -60,6 +60,9 @@ export default class Client extends EventTarget {
             let message
             try {
                 message = JSON.parse(e.data)
+                if(this.dev){
+                    console.log('ws message', typeof(message), message)
+                }
             } catch (error) {
                 this.dispatchEvent(new CustomEvent('error', {detail: error}))
                 return
