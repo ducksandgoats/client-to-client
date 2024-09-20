@@ -54,6 +54,10 @@ export default class Client extends Events {
         //     delete this.socket
         // }
         this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}&want=${6 - this.channels.size}`)
+        this.socket.addEventListener('open', handleOpen)
+        this.socket.addEventListener('message', handleMessage)
+        this.socket.addEventListener('error', handleError)
+        this.socket.addEventListener('close', handleClose)
         const handleOpen = (e) => {
             this.emit('ev', 'socket opened' + e)
         }
@@ -145,10 +149,6 @@ export default class Client extends Events {
             }
             delete this.socket
         }
-        this.socket.addEventListener('open', handleOpen)
-        this.socket.addEventListener('message', handleMessage)
-        this.socket.addEventListener('error', handleError)
-        this.socket.addEventListener('close', handleClose)
         const handleEvent = () => {
             this.socket.removeEventListener('open', handleOpen)
             this.socket.removeEventListener('message', handleMessage)
