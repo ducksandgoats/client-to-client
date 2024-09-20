@@ -1,8 +1,7 @@
 import Channel from '@thaunknown/simple-peer/lite.js'
-import Events from 'events'
 import {Level} from 'level'
 
-export default class Client extends Events {
+export default class Client extends EventTarget {
     constructor(url, hash, opts = {}){
         super()
         this.dev = Boolean(opts.dev)
@@ -54,19 +53,15 @@ export default class Client extends Events {
         //     delete this.socket
         // }
         this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}&want=${6 - this.channels.size}`)
-        this.socket.addEventListener('open', this.socket.handleOpen)
-        this.socket.addEventListener('message', this.socket.handleMessage)
-        this.socket.addEventListener('error', this.socket.handleError)
-        this.socket.addEventListener('close', this.socket.handleClose)
         this.socket.handleOpen = (e) => {
-            this.emit('ev', 'socket opened' + e)
+            this.dispatchEvent(new CustomEvent('ev', {detail: 'socket opened' + e}))
         }
         this.socket.handleMessage = (e) => {
             let message
             try {
                 message = JSON.parse(e.data)
             } catch (error) {
-                this.emit('error', error)
+                this.dispatchEvent(new CustomEvent('error', {detail: error}))
                 return
             }
             if(message.action === 'relay'){
@@ -139,10 +134,10 @@ export default class Client extends Events {
             }
         }
         this.socket.handleError = (e) => {
-            this.emit('error', e)
+            this.dispatchEvent(new CustomEvent('error', {detail: e}))
         }
         this.socket.handleClose = (e) => {
-            this.emit('ev', 'socket closed' + e)
+            this.dispatchEvent(new CustomEvent('ev', {detail: 'socket closed' + e}))
             this.socket.handleEvent()
             if(this.socket.relay){
                 setTimeout(() => {this.ws()}, 5000)
@@ -155,6 +150,10 @@ export default class Client extends Events {
             this.socket.removeEventListener('error', this.socket.handleError)
             this.socket.removeEventListener('close', this.socket.handleClose)
         }
+        this.socket.addEventListener('open', this.socket.handleOpen)
+        this.socket.addEventListener('message', this.socket.handleMessage)
+        this.socket.addEventListener('error', this.socket.handleError)
+        this.socket.addEventListener('close', this.socket.handleClose)
     }
     handleChannel(channel){
         const onConnect = () => {
@@ -184,8 +183,7 @@ export default class Client extends Events {
                     channel.send(`trystereo:${JSON.stringify({action: 'add', add: data.id})}`)
                 }
             })
-            this.emit('connect', channel)
-            // channel.emit('connected', channel)
+            this.dispatchEvent(new CustomEvent('connect', {detail: channel.id}))
         }
         const onData = (data) => {
             data = new TextDecoder().decode(data)
@@ -215,24 +213,18 @@ export default class Client extends Events {
                 } else if(data.action === 'abort'){
                     this.abortion(data, channel)
                 } else {
-                    this.emit('error', new Error('data is invalid'))
+                    this.dispatchEvent(new CustomEvent('error', {detail: new Error('data is invalid')}))
                 }
             } else {
-                channel.emit('message', data)
+                this.dispatchEvent(new CustomEvent('message', {detail: {id: channel.id, data}}))
             }
         }
-        // const onStream = (stream) => {
-        //     this.dispatchEvent(new CustomEvent('error', {detail: {id: channel.id, ev: stream}}))
-        // }
-        // const onTrack = (track, stream) => {
-        //     this.dispatchEvent(new CustomEvent('error', {detail: {id: channel.id, ev: {track, stream}}}))
-        // }
         const onError = (err) => {
             if(this.dev){
                 console.error('webrtc error', err)
             }
             err.id = channel.id
-            this.emit('error', err)
+            this.dispatchEvent(new CustomEvent('error', {detail: err}))
         }
         const onClose = () => {
             if(this.dev){
@@ -272,8 +264,7 @@ export default class Client extends Events {
                     this.ws()
                 }
             }
-            this.emit('disconnect', channel)
-            // channel.emit('disconnected', channel)
+            this.dispatchEvent(new CustomEvent('disconnect', {detail: channel.id}))
         }
         const onHandle = () => {
             channel.off('connect', onConnect)
@@ -494,7 +485,7 @@ export default class Client extends Events {
                 this.handleChannel(testChannel)
             })
             .catch((err) => {
-                this.emit('error', err)
+                this.dispatchEvent(new CustomEvent('error', {detail: err}))
                 testChannel.destroy()
                 this.temp.delete(tempChannel.id)
                 chan.send(JSON.stringify({...obj, action: 'abort'}))
