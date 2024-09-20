@@ -22,7 +22,7 @@ export default class Client extends Events {
         this.relay = false
         this.temp = new Map()
         this.status = true
-        this.auto = Boolean(opts.auto)
+        this.auto = opts.auto === false ? opts.auto : true
         if(this.auto){
             this.ws()
         }
@@ -172,16 +172,6 @@ export default class Client extends Events {
                 this.channels.get(channel.msg.relay).send({action: 'afterSession', id: channel.msg.id})
             }
             delete channel.msg
-            // this.dispatchEvent(new CustomEvent('connect', {detail: channel}))
-            // if(!this.channels.has(channel.id)){
-            //     this.channels.set(channel.id, channel)
-            //     this.channels.forEach((data) => {
-            //         if(data.id !== channel.id){
-            //             data.send('trystereo:add:' + channel.id)
-            //             channel.send('trystereo:add:' + data.id)
-            //         }
-            //     })
-            // }
             this.channels.forEach((data) => {
                 if(data.id !== channel.id){
                     data.send(`trystereo:${JSON.stringify({action: 'add', add: channel.id})}`)
@@ -236,7 +226,6 @@ export default class Client extends Events {
             if(this.dev){
                 console.log('webrtc data', channel.id)
             }
-            // this.dispatchEvent(new CustomEvent('close', {detail: channel}))
             onHandle()
 
             channel.messages.forEach(async (data) => {
