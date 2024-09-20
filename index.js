@@ -141,8 +141,8 @@ export default class Client extends Events {
         this.socket.handleError = (e) => {
             this.emit('error', e)
         }
-        this.socket.handleClose = (e) => {
-            this.emit('ev', 'socket closed' + e)
+        this.socket.handleClose = (code, reason) => {
+            this.emit('ev', `socket closed - code: ${code} reason: ${reason}`)
             this.socket.handleEvent()
             if(this.socket.relay){
                 setTimeout(() => {this.ws()}, 5000)
