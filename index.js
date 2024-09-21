@@ -275,8 +275,10 @@ export default class Client extends Events {
                 this.channels.delete(channel.id)
             }
             if(this.status){
-                if(this.channels.size && this.channels.size < 3){
-                    this.rtc()
+                if(this.channels.size){
+                    if(this.channels.size < 3){
+                        this.rtc()
+                    }
                 } else if(this.channels.size){
                     this.ws()
                 }
