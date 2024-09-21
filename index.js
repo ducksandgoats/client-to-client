@@ -238,7 +238,7 @@ export default class Client extends Events {
             }
             err.id = channel.id
             this.emit('error', err)
-            if(channel.connected){
+            if(!channel.connected){
                 channel.destroy()
             }
         }
