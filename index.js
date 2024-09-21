@@ -238,6 +238,9 @@ export default class Client extends Events {
             }
             err.id = channel.id
             this.emit('error', err)
+            if(channel.connected){
+                channel.destroy()
+            }
         }
         const onClose = () => {
             if(this.dev){
