@@ -6,12 +6,17 @@ export default class Client extends Events {
     constructor(url, hash, opts = {}){
         super()
         this.dev = Boolean(opts.dev)
-        this.id = localStorage.getItem('id')
+        this.user = Boolean(opts.user)
+        this.id = this.user ? localStorage.getItem('id') : sessionStorage.getItem('id')
         this.browserOrNot = typeof(window) !== 'undefined'
         this.db = new Level(this.browserOrNot ? 'db' : './db')
         if(!this.id){
             this.id = crypto.randomUUID()
-            localStorage.setItem('id', this.id)
+            if(this.user){
+                localStorage.setItem('id', this.id)
+            } else {
+                sessionStorage.setItem('id', this.id)
+            }
         }
         this.simple = opts.simple && typeof(opts.simple) === 'object' && !Array.isArray(opts.simple) ? opts.simple : {}
         this.hash = hash
