@@ -43,7 +43,7 @@ export default class Client extends Events {
         }
         this.temp.forEach((data) => {
             if(this.channels.has(data.relay)){
-                this.channels.get(data.relay).send(JSON.stringify({id: data.id, action: 'abort'}))
+                this.channels.get(data.relay).send(JSON.stringify({...data, action: 'abort'}))
             }
         })
         this.temp.clear()
@@ -248,6 +248,13 @@ export default class Client extends Events {
             }
             onHandle()
 
+            if(!channel.ws && channel.msg){
+                if(this.channels.has(channel.msg.relay)){
+                    this.channels.get(channel.msg.relay).send(JSON.stringify({...channel.msg, action: 'abort'}))
+                }
+                delete channel.msg
+            }
+
             if(channel.takeOut){
                 clearTimeout(channel.takeOut)
                 delete channel.takeOut
@@ -257,12 +264,12 @@ export default class Client extends Events {
                 const test = await this.db.get(data)
                 if(test.startRelay){
                     if(this.channels.has(test.startRelay)){
-                        this.channels.get(test.startRelay).send(JSON.stringify({action: 'abort', id: test.id}))
+                        this.channels.get(test.startRelay).send(JSON.stringify({...test, action: 'abort'}))
                     }
                 }
                 if(test.stopRelay){
                     if(this.channels.has(test.stopRelay)){
-                        this.channels.get(test.stopRelay).send(JSON.stringify({action: 'abort', id: test.id}))
+                        this.channels.get(test.stopRelay).send(JSON.stringify({...test, action: 'abort'}))
                     }
                 }
                 channel.messages.delete(data)
@@ -354,6 +361,33 @@ export default class Client extends Events {
                 this.channels.get(test.startRelay).send(JSON.stringify(obj))
             }
             await this.db.del(test.id)
+        } else {
+            if(this.temp.has(obj.id)){
+                this.temp.delete(obj.id)
+                if((this.temp.size + this.channels.size) < 6){
+                    this.rtc()
+                }
+            } else if(this.id === obj.start){
+                if(this.channels.has(obj.stop)){
+                    const testChan = this.channels.get(obj.stop)
+                    if(testChan.msg){
+                        delete testChan.msg
+                    }
+                    if(!testChan.connected){
+                        testChan.destroy()
+                    }
+                }
+            } else if(this.id === obj.stop){
+                if(this.channels.has(obj.start)){
+                    const testChan = this.channels.get(obj.start)
+                    if(testChan.msg){
+                        delete testChan.msg
+                    }
+                    if(!testChan.connected){
+                        testChan.destroy()
+                    }
+                }
+            } else {}
         }
     }
     async beforeSearch(obj, chan){
@@ -364,7 +398,7 @@ export default class Client extends Events {
                 testChannel.id = obj.start
                 testChannel.redo = true
                 testChannel.ws = false
-                testChannel.msg = {id: obj.id, relay: chan.id, start: obj.start}
+                testChannel.msg = {id: obj.id, relay: chan.id, start: obj.start, stop: this.id}
                 testChannel.channels = new Set()
                 testChannel.messages = new Set()
                 // if(!this.channels.has(testChannel.id)){

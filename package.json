@@ -1,6 +1,6 @@
 {
   "name": "client-to-client",
-  "version": "4.0.9",
+  "version": "5.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
