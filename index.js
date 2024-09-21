@@ -289,7 +289,7 @@ export default class Client extends Events {
                     if(this.channels.size < 3){
                         this.rtc()
                     }
-                } else if(this.channels.size){
+                } else {
                     this.ws()
                 }
             }
