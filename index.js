@@ -100,6 +100,7 @@ export default class Client extends Events {
                     testChannel.redo = true
                     testChannel.channels = new Set()
                     testChannel.messages = new Set()
+                    testChannel.ws = true
                     if(!this.channels.has(testChannel.id)){
                         this.channels.set(testChannel.id, testChannel)
                     }
@@ -119,6 +120,7 @@ export default class Client extends Events {
                     testChannel.redo = true
                     testChannel.channels = new Set()
                     testChannel.messages = new Set()
+                    testChannel.ws = true
                     if(!this.channels.has(testChannel.id)){
                         this.channels.set(testChannel.id, testChannel)
                     }
@@ -147,6 +149,7 @@ export default class Client extends Events {
         this.socket.handleClose = (e) => {
             this.emit('close', e)
             this.socket.handleEvent()
+            this.channels.forEach((chan) => {if(chan.ws && !chan.connected){chan.destroy()}})
             if(this.socket.relay){
                 setTimeout(() => {this.ws()}, 5000)
             }
@@ -168,13 +171,19 @@ export default class Client extends Events {
             if(this.dev){
                 console.log('webrtc connect', channel.id)
             }
-            clearTimeout(channel.takeOut)
-            delete channel.takeOut
-
-            if(this.channels.has(channel.msg.relay)){
-                this.channels.get(channel.msg.relay).send({action: 'afterSession', id: channel.msg.id})
+            
+            if(channel.takeOut){
+                clearTimeout(channel.takeOut)
+                delete channel.takeOut
             }
-            delete channel.msg
+
+            if(!channel.ws && channel.msg){
+                if(this.channels.has(channel.msg.relay)){
+                    this.channels.get(channel.msg.relay).send({action: 'afterSession', id: channel.msg.id})
+                }
+                delete channel.msg
+            }
+
             this.channels.forEach((data) => {
                 if(data.id !== channel.id){
                     data.send(`trystereo:${JSON.stringify({action: 'add', add: channel.id})}`)
@@ -230,6 +239,11 @@ export default class Client extends Events {
                 console.log('webrtc data', channel.id)
             }
             onHandle()
+
+            if(channel.takeOut){
+                clearTimeout(channel.takeOut)
+                delete channel.takeOut
+            }
 
             channel.messages.forEach(async (data) => {
                 const test = await this.db.get(data)
