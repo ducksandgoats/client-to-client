@@ -1,4 +1,4 @@
-import Channel from '@thaunknown/simple-peer/lite.js'
+import Channel from 'simple-peer'
 import Events from 'events'
 import {Level} from 'level'
 
