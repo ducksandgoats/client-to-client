@@ -218,7 +218,7 @@ export default class Client extends Events {
             })
             this.emit('connect', channel.id)
         }
-        const onData = (data) => {
+        const onData = async (data) => {
             data = new TextDecoder().decode(data)
             if(this.dev){
                 console.log('webrtc data', typeof(data), data)
@@ -234,22 +234,21 @@ export default class Client extends Events {
                         channel.channels.add(data.sub)
                     }
                 } else if(data.action === 'beforeSearch'){
-                    this.beforeSearch(data, channel)
+                    await this.beforeSearch(data, channel)
                 } else if(data.action === 'afterSearch'){
-                    this.afterSearch(data, channel)
+                    await this.afterSearch(data, channel)
                 } else if(data.action === 'beforeSession'){
-                    this.beforeSession(data, channel)
+                    await this.beforeSession(data, channel)
                 } else if(data.action === 'afterSession'){
-                    this.afterSession(data, channel)
+                    await this.afterSession(data, channel)
                 } else if(data.action === 'nonmsg'){
-                    this.nonmsg(data)
+                    await this.nonmsg(data)
                 } else if(data.action === 'abort'){
-                    this.abortion(data, channel)
+                    await this.abortion(data, channel)
                 } else {
                     this.emit('error', new Error('data is invalid'))
                 }
             } else {
-                // channel.emit('message', data)
                 this.emit('message', channel.id, data)
             }
         }
