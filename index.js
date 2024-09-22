@@ -432,10 +432,12 @@ export default class Client extends Events {
             await this.db.put(base.id, base)
 
             const arr = []
+            const list = new Set()
             for(const prop of this.channels.values()){
                 arr.push(prop)
+                list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -459,10 +461,12 @@ export default class Client extends Events {
             const chan = this.temp.get(obj.id)
             const base = chan.msg
             const arr = []
+            const list = new Set()
             for(const prop of this.channels.values()){
                 arr.push(prop)
+                list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id)})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && list.difference(data.channels).size})
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -486,10 +490,12 @@ export default class Client extends Events {
             }
     
             const arr = []
+            const list = new Set()
             for(const prop of this.channels.values()){
                 arr.push(prop)
+                list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -576,10 +582,12 @@ export default class Client extends Events {
         this.temp.set(test.id, test)
 
         const arr = []
+        const list = new Set()
         for(const prop of this.channels.values()){
             arr.push(prop)
+            list.add(prop.id)
         }
-        const notTried = arr.filter((data) => {return !test.tried.includes(data.id)})
+        const notTried = arr.filter((data) => {return !test.tried.includes(data.id) && list.difference(data.channels).size})
         // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
         const i = notTried[Math.floor(Math.random() * notTried.length)]
         if(i){
