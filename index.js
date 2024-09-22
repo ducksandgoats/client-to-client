@@ -68,7 +68,7 @@ export default class Client extends Events {
             try {
                 message = JSON.parse(e.data)
                 if(this.dev){
-                    console.log('websocket data', typeof(data), data)
+                    console.log('websocket data', typeof(message), message)
                 }
             } catch (error) {
                 this.emit('error', error)
