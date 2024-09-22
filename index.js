@@ -24,7 +24,6 @@ export default class Client extends Events {
         this.channels = new Map()
         this.tracks = new Set()
         this.socket = null
-        this.relay = false
         this.temp = new Map()
         this.status = true
         this.auto = opts.auto === false ? opts.auto : true
@@ -101,12 +100,6 @@ export default class Client extends Events {
             if(message.action === 'relay'){
                 if(message.relay){
                     this.url = message.relay
-                    this.channels.forEach((data) => {
-                        if(!data.connected){
-                            data.destroy()
-                            this.channels.delete(data.id)
-                        }
-                    })
                     this.socket.relay = true
                     this.socket.close()
                 }
