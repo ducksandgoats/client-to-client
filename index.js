@@ -475,10 +475,13 @@ export default class Client extends Events {
                 await this.db.put(base.id, base)
                 i.send('trystereo:' + JSON.stringify(obj))
             } else {
-                obj.action = 'nonmsg'
-                base.startRelay.send('trystereo:' + JSON.stringify(obj))
-                if(base.startRelay.messages.has(base.id)){
-                    base.startRelay.messages.delete(base.id)
+                if(this.channels.has(base.startRelay)){
+                    obj.action = 'nonmsg'
+                    const testChan = this.channels.get(base.startRelay)
+                    testChan.send('trystereo:' + JSON.stringify(obj))
+                    if(testChan.messages.has(base.id)){
+                        testChan.messages.delete(base.id)
+                    }
                 }
                 if(this.dev){
                     console.log('deleted db obj')
@@ -541,8 +544,8 @@ export default class Client extends Events {
                 i.send('trystereo:' + JSON.stringify(obj))
             } else {
                 if(this.channels.has(base.startRelay)){
-                    const sendToChannel = this.channels.get(base.startRelay)
                     obj.action = 'nonmsg'
+                    const sendToChannel = this.channels.get(base.startRelay)
                     sendToChannel.send('trystereo:' + JSON.stringify(obj))
                     if(sendToChannel.messages.has(base.id)){
                         sendToChannel.messages.delete(base.id)
@@ -659,7 +662,7 @@ export default class Client extends Events {
                 // chan.id === test.startRelay && test.start === obj.start && test.stop === obj.stop && this.channels.has(test.stopRelay)
                 if(chan.id === test.startRelay && this.channels.has(test.stopRelay)){
                     this.channels.get(test.stopRelay).send(JSON.stringify(obj))
-                    if(chan.messages.has(obj.id)){
+                    if(!chan.messages.has(obj.id)){
                         chan.messages.add(obj.id)
                     }
                     await this.db.put(test.id, test)
