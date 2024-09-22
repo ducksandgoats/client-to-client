@@ -29,12 +29,12 @@ export default class Client extends Events {
         this.status = true
         this.auto = opts.auto === false ? opts.auto : true
         if(this.auto){
-            this.ws()
+            this.ws(true)
         }
     }
     begin(){
         this.status = true
-        this.ws()
+        this.ws(true)
     }
     end(){
         this.status = false
@@ -52,15 +52,36 @@ export default class Client extends Events {
         })
         this.channels.clear()
     }
-    ws(){
-        if(this.socket){
+    ws(amount){
+        const test = this.temp.size + this.channels.size
+        if(!(test < 6)){
             return
         }
-        // } else {
-        //     delete this.socket
-        // }
-        this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}&want=${6 - this.channels.size}`)
+        if(this.socket){
+            if(this.socket.readyState === WebSocket.OPEN){
+                if(amount){
+                    const testing = 6 - test
+                    for(let i = 0;i < testing;i++){
+                        this.socket.send(JSON.stringify({action: 'session'}))
+                    }
+                } else {
+                    this.socket.send(JSON.stringify({action: 'session'}))
+                }
+            } else {
+                setTimeout(() => {this.ws(amount)}, 5000)
+            }
+            return
+        }
+        this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}`)
         this.socket.handleOpen = (e) => {
+            if(amount){
+                const testing = 6 - test
+                for(let i = 0;i < testing;i++){
+                    this.socket.send(JSON.stringify({action: 'session'}))
+                }
+            } else {
+                this.socket.send(JSON.stringify({action: 'session'}))
+            }
             this.emit('open', e)
         }
         this.socket.handleMessage = (e) => {
@@ -154,9 +175,8 @@ export default class Client extends Events {
         this.socket.handleClose = (e) => {
             this.emit('close', e)
             this.socket.handleEvent()
-            this.channels.forEach((chan) => {if(chan.ws && !chan.connected){chan.destroy()}})
             if(this.socket.relay){
-                setTimeout(() => {this.ws()}, 5000)
+                setTimeout(() => {this.ws(amount)}, 5000)
             }
             delete this.socket
         }
@@ -248,13 +268,6 @@ export default class Client extends Events {
             }
             onHandle()
 
-            if(!channel.ws && channel.msg){
-                if(this.channels.has(channel.msg.relay)){
-                    this.channels.get(channel.msg.relay).send(JSON.stringify({...channel.msg, action: 'abort'}))
-                }
-                delete channel.msg
-            }
-
             if(channel.takeOut){
                 clearTimeout(channel.takeOut)
                 delete channel.takeOut
@@ -285,12 +298,23 @@ export default class Client extends Events {
                 this.channels.delete(channel.id)
             }
             if(this.status){
-                if(this.channels.size){
-                    if(this.channels.size < 3){
-                        this.rtc()
-                    }
+                const count = this.temp.size + this.channels.size
+                if(count < 1){
+                    this.ws(true)
                 } else {
-                    this.ws()
+                    if(channel.ws){
+                        this.rtc()
+                    } else {
+                        if(channel.msg){
+                            if(this.channels.has(channel.msg.relay)){
+                                this.channels.get(channel.msg.relay).send(JSON.stringify({...channel.msg, action: 'abort'}))
+                            }
+                            delete channel.msg
+                            this.ws(false)
+                        } else {
+                            this.rtc()
+                        }
+                    }
                 }
             }
             this.emit('disconnect', channel.id)
