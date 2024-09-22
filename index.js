@@ -438,6 +438,9 @@ export default class Client extends Events {
                 list.add(prop.id)
             }
             const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
+            if(this.dev){
+                console.log(notTried)
+            }
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -451,6 +454,9 @@ export default class Client extends Events {
                 base.startRelay.send('trystereo:' + JSON.stringify(obj))
                 if(base.startRelay.messages.has(base.id)){
                     base.startRelay.messages.delete(base.id)
+                }
+                if(this.dev){
+                    console.log('deleted db obj')
                 }
                 await this.db.del(base.id)
             }
@@ -467,6 +473,9 @@ export default class Client extends Events {
                 list.add(prop.id)
             }
             const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && list.difference(data.channels).size})
+            if(this.dev){
+                console.log(notTried)
+            }
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -496,6 +505,9 @@ export default class Client extends Events {
                 list.add(prop.id)
             }
             const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
+            if(this.dev){
+                console.log(notTried)
+            }
             // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
@@ -512,6 +524,9 @@ export default class Client extends Events {
                     if(sendToChannel.messages.has(base.id)){
                         sendToChannel.messages.delete(base.id)
                     }
+                }
+                if(this.dev){
+                    console.log('deleted db obj')
                 }
                 await this.db.del(base.id)
             }
@@ -588,6 +603,9 @@ export default class Client extends Events {
             list.add(prop.id)
         }
         const notTried = arr.filter((data) => {return !test.tried.includes(data.id) && list.difference(data.channels).size})
+        if(this.dev){
+            console.log(notTried)
+        }
         // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
         const i = notTried[Math.floor(Math.random() * notTried.length)]
         if(i){
@@ -597,6 +615,9 @@ export default class Client extends Events {
             i.send('trystereo:' + JSON.stringify(obj))
         } else {
             this.temp.delete(test.id)
+            if(this.dev){
+                console.log('deleted temp obj')
+            }
             return
         }
     }
