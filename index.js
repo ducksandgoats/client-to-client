@@ -303,7 +303,7 @@ export default class Client extends Events {
                 const count = this.temp.size + this.channels.size
                 if(count < 1){
                     this.ws(true)
-                } else {
+                } else if(count < 3){
                     if(channel.ws){
                         this.rtc()
                     } else {
@@ -316,6 +316,10 @@ export default class Client extends Events {
                         } else {
                             this.rtc()
                         }
+                    }
+                } else {
+                    if(this.dev){
+                        console.log('already have at least 3 users')
                     }
                 }
             }
@@ -417,7 +421,11 @@ export default class Client extends Events {
         }
     }
     async beforeSearch(obj, chan){
-        if((this.channels.size + this.temp.size) < 6 && !this.channels.has(obj.start)){
+        if(this.id === obj.start || this.temp.has(obj.id)){
+            obj.action = 'nonmsg'
+            chan.send('trystereo:' + JSON.stringify(obj))
+            return
+        } else if((this.channels.size + this.temp.size) < 6 && !this.channels.has(obj.start)){
             const testChannel = new Channel({...this.simple, initiator: true, trickle: false})
             new Promise((res) => {testChannel.once('signal', res)})
             .then((data) => {
