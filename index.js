@@ -211,7 +211,9 @@ export default class Client extends Events {
 
             this.channels.forEach((data) => {
                 if(data.id !== channel.id){
-                    data.send(`trystereo:${JSON.stringify({action: 'add', add: channel.id})}`)
+                    if(data.connected){
+                        data.send(`trystereo:${JSON.stringify({action: 'add', add: channel.id})}`)
+                    }
                     channel.send(`trystereo:${JSON.stringify({action: 'add', add: data.id})}`)
                 }
             })
@@ -290,7 +292,7 @@ export default class Client extends Events {
             channel.messages.clear()
 
             this.channels.forEach((chan) => {
-                if(chan.id !== channel.id){
+                if(chan.id !== channel.id && chan.connected){
                     chan.send(`trystereo:${JSON.stringify({action: 'sub', sub: channel.id})}`)
                 }
             })
@@ -461,11 +463,10 @@ export default class Client extends Events {
                 arr.push(prop)
                 list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.connected && data.id !== base.startRelay && list.difference(data.channels).size})
             if(this.dev){
                 console.log(notTried)
             }
-            // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
                 obj.action = 'beforeSearch'
@@ -496,11 +497,10 @@ export default class Client extends Events {
                 arr.push(prop)
                 list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && list.difference(data.channels).size})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.connected && list.difference(data.channels).size})
             if(this.dev){
                 console.log(notTried)
             }
-            // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
                 obj.action = 'beforeSearch'
@@ -528,11 +528,10 @@ export default class Client extends Events {
                 arr.push(prop)
                 list.add(prop.id)
             }
-            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.id !== base.startRelay && list.difference(data.channels).size})
+            const notTried = arr.filter((data) => {return !base.tried.includes(data.id) && data.connected && data.id !== base.startRelay && list.difference(data.channels).size})
             if(this.dev){
                 console.log(notTried)
             }
-            // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
             const i = notTried[Math.floor(Math.random() * notTried.length)]
             if(i){
                 obj.action = 'beforeSearch'
@@ -626,11 +625,10 @@ export default class Client extends Events {
             arr.push(prop)
             list.add(prop.id)
         }
-        const notTried = arr.filter((data) => {return !test.tried.includes(data.id) && list.difference(data.channels).size})
+        const notTried = arr.filter((data) => {return !test.tried.includes(data.id) && data.connected && list.difference(data.channels).size})
         if(this.dev){
             console.log(notTried)
         }
-        // const servers = notTried.filter((data) => {return data.server && data.proto.includes(obj.proto)})
         const i = notTried[Math.floor(Math.random() * notTried.length)]
         if(i){
             const obj = {id: test.id, start: test.start, action: 'beforeSearch'}
