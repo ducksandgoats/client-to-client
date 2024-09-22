@@ -73,6 +73,9 @@ export default class Client extends Events {
         }
         this.socket = new WebSocket(`${this.url}?hash=${this.hash}&id=${this.id}`)
         this.socket.handleOpen = (e) => {
+            if(this.dev){
+                console.log('websocket connected')
+            }
             if(amount){
                 const testing = 6 - test
                 for(let i = 0;i < testing;i++){
@@ -166,6 +169,9 @@ export default class Client extends Events {
             this.emit('error', e)
         }
         this.socket.handleClose = (e) => {
+            if(this.dev){
+                console.log('websocket disconnected')
+            }
             this.emit('close', e)
             this.socket.handleEvent()
             if(this.socket.relay){
