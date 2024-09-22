@@ -351,8 +351,8 @@ export default class Client extends Events {
     onMesh(id, data){
         if(this.channels.has(id)){
             const chans = this.channels.get(id)
-            this.channels.forEach((chan) => {
-                if(chans.id !== chan.id){
+            for(const chan of this.channels.values()){
+                if(chan.connected && chans.id !== chan.id){
                     if(!chan.channels.has(chans.id)){
                         const test = chans.channels.intersection(chan.channels)
                         if(test.size){
@@ -371,7 +371,7 @@ export default class Client extends Events {
                         }
                     }
                 }
-            })
+            }
         }
     }
     async abortion(obj, chan){
@@ -410,7 +410,9 @@ export default class Client extends Events {
                         testChan.destroy()
                     }
                 }
-            } else {}
+            } else {
+                return
+            }
         }
     }
     async beforeSearch(obj, chan){
